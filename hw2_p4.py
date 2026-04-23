@@ -20,5 +20,5 @@ plt.plot(np.fft.fftshift(f), np.fft.fftshift(rc_spec),   label=f'Raised Cosine B
 plt.xlim(-2, 2)
 plt.legend()
 plt.xlabel('Frequency (normalized)')
-plt.title('Bandwidth comparison')
+plt.title('Bandwidth Comparison')
 plt.show()
