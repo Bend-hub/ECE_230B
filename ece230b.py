@@ -42,8 +42,8 @@ def create_pulse_train(symbols, sps):
     Output:
     pulse_train: A discrete-time signal where each symbol is separated by (sps-1) zeros.
     '''
-    zero_arr = [0]*(len(symbols) * sps)
-    indices = [(i + sps) for i in range(len(symbols))]
+    zero_arr = [str(0)]*(len(symbols) * (sps - 1)) # one less than sps because we have to insert nonzero numbers
+    indices = [(i * sps) for i in range(len(symbols))]
     counter = 0
     for i in indices:
         zero_arr.insert(i, symbols[counter])
@@ -61,4 +61,3 @@ def get_rc_pulse(beta, span, sps):
     pulse: A truncated raised cosine pulse, symmetric and centered at 𝜏=0. The number of zero crossings should be equal to span. The pulse should be normalized such that its energy is equal to one.
     '''
     pass
-
