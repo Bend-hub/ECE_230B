@@ -28,6 +28,7 @@ plt.close()
 # perform convolution with raised cosine
 beta_list = [0.0, 0.25, 0.5, 0.75, 1.0]
 
+fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 6))
 for b in beta_list:
     span = 8
     sps = 10
@@ -36,26 +37,27 @@ for b in beta_list:
     imag_y_axis = np.convolve(rc, imaginary)
     real_y_axis = real_y_axis/max(rc)
     imag_y_axis = imag_y_axis/max(rc)
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 6))
     x_axis = np.arange(len(real_y_axis)) / 10
-    ax1.plot(x_axis, real_y_axis)
-    ax1.set_title('Pulsed Shaped In-Phase Values, Rolloff Factor of ' + str(b))
+    ax1.plot(x_axis, real_y_axis, label="beta = " + str(b))
+    ax1.set_title('Pulsed Shaped In-Phase Values')
     ax1.set_xlabel('Time')
     ax1.set_ylabel('Amplitudes')
 
-    ax2.plot(x_axis, imag_y_axis)
-    ax2.set_title('Pulse Shaped Quadrature Values, Rolloff Factor of ' + str(b))
+    ax2.plot(x_axis, imag_y_axis, label="beta = " + str(b))
+    ax2.set_title('Pulse Shaped Quadrature Values')
     ax2.set_xlabel('Time')
     ax2.set_ylabel('Amplitudes')
 
-    # highlight no ISI
-    delay = (len(rc) - 1) // 2
-    sample_indices = np.linspace(delay/sps, (delay + N*sps)/sps, N*sps)
-    ax1.scatter(sample_indices, real, s=5)
-    ax2.scatter(sample_indices, imaginary, s=5)
-    plt.tight_layout()
-    plt.show()
-    plt.close()
+# highlight no ISI
+delay = (len(rc) - 1) // 2
+sample_indices = np.linspace(delay/sps, (delay + N*sps)/sps, N*sps)
+ax1.scatter(sample_indices, real, s=5)
+ax2.scatter(sample_indices, imaginary, s=5)
+ax1.legend()
+ax2.legend()
+plt.tight_layout()
+plt.show()
+plt.close()
 
 '''
 beta_list = [0.0, 0.25, 0.5, 0.75, 1.0]
