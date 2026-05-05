@@ -26,7 +26,7 @@ def gen_rand_qam_symbols(N, M):
     bits = int(math.sqrt(M))
     symbols = []
     constellation = []
-    
+
     # generate constellation
     for a in range(bits):
         a = (2*a) + 1 - bits
@@ -51,7 +51,7 @@ def create_pulse_train(symbols, sps):
     Output:
     pulse_train: A discrete-time signal where each symbol is separated by (sps-1) zeros.
     '''
-    zero_arr = [0]*(len(symbols) * (sps - 1)) # one less than sps because we have to insert nonzero numbers
+    zero_arr = [complex(0, 0)]*(len(symbols) * (sps - 1)) # one less than sps because we have to insert nonzero numbers
     indices = [(i * sps) for i in range(len(symbols))]
     counter = 0
     for i in indices:
