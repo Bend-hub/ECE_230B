@@ -133,9 +133,6 @@ def symbol_error_rate(received_symbols, transmitted_symbols, constellation):
     Output:
     ser: float, the symbol error rate
     """
-    received_symbols    = received_symbols
-    transmitted_symbols = transmitted_symbols
-    constellation       = constellation
 
     # For each received symbol, find the nearest constellation point
     distances = np.abs(received_symbols[:, np.newaxis] - constellation[np.newaxis, :])
@@ -186,12 +183,10 @@ def symbol_synch_moe(rx_signal,sps,upsample=8,plot=False):
     #upsampled = upsample_signal(rx_signal, upsample)
     upsampled = np.load("upsampled.npy")
     # calculate energies with offsets from 0 to (sps * upsample - 1)
-    # transmit length of 53,000 + 200 + 200 = 53,400
+    # transmit length of 74,780 + 200 + 200 = 75180
     # 500,000 original buffer length
-    # 4,000,000 after upsampling, so signal length also becomes 427,200
+    # 4,000,000 after upsampling, so signal length also becomes 601,440
     # we can just calculate from the first 800,000 assuming the delay isn't enormous
-    print(len(rx_signal))
-    print(len(upsampled))
     moe = 0
     moe_index = 0
     e_arr = []
@@ -218,5 +213,16 @@ def symbol_synch_moe(rx_signal,sps,upsample=8,plot=False):
     return (rx_symbols, offset)
     
 def zadoff_chu_sequence(N,q):
-    pass
+    """
+    N: Prime number, length of sequence
+    q: root, to make sure it's unique
+
+    Returns np array of 
+    """
+    n = np.arange(N)
+
+    return np.exp(-1j * np.pi * q * ((n ** 2) + n) / N)
+
+
+
 
