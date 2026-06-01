@@ -130,6 +130,8 @@ def symbol_error_rate(received_symbols, transmitted_symbols, constellation):
     transmitted_symbols: the original transmitted symbols
     constellation: square constellation
 
+    Note: Inputs should all be numpy arrays
+
     Output:
     ser: float, the symbol error rate
     """
@@ -154,12 +156,11 @@ def get_sinc_pulse(beta, span, sps):
     return h
 
 def upsample_signal(received_signal, upsample):
-    zero_arr = [complex(0, 0)]*(len(received_signal) * (upsample - 1)) # one less than sps because we have to insert nonzero numbers
-    indices = [(i * upsample) for i in range(len(received_signal))]
-    counter = 0
-    for i in indices:
-        zero_arr.insert(i, received_signal[counter])
-        counter += 1
+    n_elements = len(received_signal)
+    new_size = (n_elements) * (upsample)
+    zero_arr = np.zeros(new_size, dtype=received_signal.dtype)
+    step = upsample
+    zero_arr[::step] = received_signal
     # apply LPF
     truncated_sinc = get_sinc_pulse(1, 20, 10)
     filtered_upsample = np.convolve(truncated_sinc, zero_arr)
@@ -180,8 +181,8 @@ def symbol_synch_moe(rx_signal,sps,upsample=8,plot=False):
     The synchronized and downsampled symbols, and also the offset value itself
     """
     
-    #upsampled = upsample_signal(rx_signal, upsample)
-    upsampled = np.load("upsampled.npy")
+    upsampled = upsample_signal(rx_signal, upsample)
+    #upsampled = np.load("upsampled.npy")
     # calculate energies with offsets from 0 to (sps * upsample - 1)
     # transmit length of 74,780 + 200 + 200 = 75180
     # 500,000 original buffer length
@@ -222,7 +223,4 @@ def zadoff_chu_sequence(N,q):
     n = np.arange(N)
 
     return np.exp(-1j * np.pi * q * ((n ** 2) + n) / N)
-
-
-
 
