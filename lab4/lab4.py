@@ -30,9 +30,9 @@ tx_cyclic_buffer = True         # cyclic nature of transmitter's buffer (True ->
 # ---------------------------------------------------------------
 # Initialize Pluto object using issued token.
 # ---------------------------------------------------------------
-sdr_tx = adi.Pluto(token='VfkzKu12j68') # create Pluto object
+sdr_tx = adi.Pluto(token='B40WX1J836Y') # create Pluto object
 
-sdr_rx = adi.Pluto(token='eR1ump6-DvI')
+sdr_rx = adi.Pluto(token='7kRA8o3LOFo')
 
 sdr_tx.sample_rate = int(sample_rate)   # set baseband sampling rate of Pluto
 sdr_rx.sample_rate = int(sample_rate)
@@ -68,16 +68,15 @@ np.save("tx_symbols", symbols)
 pilots, constellation = gen_rand_qam_symbols(300, M=16)
 symbols = pilots + symbols
 pilots = np.array(pilots)
+constellation = np.array(constellation)
 np.save("pilots", pilots)
 np.save("constellation", constellation)
 # add zadoff chu sequences
-stf = zadoff_chu_sequence(19, 1)
-ltf = zadoff_chu_sequence(937, 1)
+stf = np.tile(zadoff_chu_sequence(19, 1), 16)
+ltf = np.tile(zadoff_chu_sequence(937, 1), 2)
 symbols = np.array(symbols)
-for i in range(2):
-    symbols = np.concatenate([ltf, symbols])
-for i in range(16):
-    symbols = np.concatenate([stf, symbols])
+symbols = np.concatenate([ltf, symbols])
+symbols = np.concatenate([stf, symbols])
 pulse_train = create_pulse_train(symbols, sps)
 #pilots_train = create_pulse_train(pilots, sps)
 
@@ -128,59 +127,72 @@ beta = 1
 span = 20
 sps = 10
 rrc = get_rrc_pulse(beta, span, sps)
-#rx_pilot = received[:len(pilots) + 160]
-#rx_pilot = np.convolve(rx_pilot, rrc)
+rx_signal = np.load("lab4_rx.npy")
 matched_output = np.convolve(rx_signal, rrc)
 # discard convolution overhead
 matched_output = matched_output[200: len(matched_output) - 200]
-
-# do symbol symchronization (fractional timing offset)
-downsampled = symbol_synch_moe(matched_output,sps,upsample=8,plot=True)
-
-# find our integer offset
+# do symbol synchronization (fractional timing offset)
+rx_symbols, offset = symbol_synch_moe(matched_output,sps,upsample=8,plot=True)
+# do frame synchronization (integer timing offset)
 corr_magn_arr = []
 max_correlation = [0, 0]
 i = 0
-while (1874 + i) <= len(downsampled):
-    corr = np.correlate(downsampled[i: 937 + i], downsampled[937 + i: 1874 + i], "full")
+while (1874 + i) <= 9000:
+    corr = np.correlate(rx_symbols[i: 937 + i], rx_symbols[937 + i: 1874 + i], "full")
     corr_magn = np.max(np.abs(corr)) # lookin for the peak
     if corr_magn > max_correlation[1]:
         max_correlation = [i, corr_magn]
     corr_magn_arr.append(corr_magn)
     i += 1
 
-# discard convolution overhead from transmitter RRC, 200 has been downsampled to 20 already
-symbols = symbols[20: len(symbols) - 20]
+if True:
+    x_axis = np.arange(0, 9000 - 1874 + 1)
+    plt.plot(x_axis, corr_magn_arr, label="|Correlation|")
+    plt.plot(max_correlation[0], max_correlation[1], 'ro', label="Peak")
+    plt.xlabel("Sliding Window Start Index")
+    plt.ylabel("Correlation Magnitdue")
+    plt.title('Frame Synchronization')
+    plt.grid(True)
+    plt.legend()
+    plt.show()
+    
 
-# perform coarse CFO estimation
-# extract the STFs and split them into 2 slightly offset combinations
-x = symbols[max_correlation[0]:max_correlation[0] + (19 * 15)]
-y = symbols[max_correlation[0] + 19:max_correlation[0] + (19 * 16)]
-# use the means to correct for noise hopefully
-coarse_cfo_phase = np.angle(np.mean(y) / np.mean(x))
-coarse_cfo = coarse_cfo_phase / (2 * np.pi * 19)
-print("Coarse_CFO: " + str(coarse_cfo))
-print("Maximum Unambiguous Coarse CFO: " + str(1/(2 * 19)))
-# adjust symbols by coarse CFO before estimating fine CFO
-n = np.arange(len(symbols))
-correction = np.exp(-1j * 2 * np.pi * coarse_cfo * n)
-symbols = symbols * correction
-# extract the LTFs
-x = symbols[max_correlation[0] + (19 * 16):max_correlation[0] + (19 * 16) + 937]
-y = symbols[max_correlation[0] + (19 * 16) + 937:max_correlation[0] + (19 * 16) + 1874]
-# use the means to correct for noise hopefully
-fine_cfo_phase = np.angle(np.mean(y) / np.mean(x))
-fine_cfo = fine_cfo_phase / (2 * np.pi * 937)
-print("Fine_CFO: " + str(fine_cfo))
-print("Maximum Unambiguous Fine CFO: " + str(1/(2 * 937)))
-# finally adjust by fine CFO
-correction = np.exp(-1j * 2 * np.pi * fine_cfo * n)
-symbols = symbols * correction
+# SCHMIDL COX FRAME CORRELATION ACTS LIKE IT STARTS AT LTF CAUSE THAT'S WHAT WE'RE CORRELATING
+max_correlation[0] = max_correlation[0] - 324 # RE ADJUST BACK TO INCLUDE THE STF AND CORRELATION OVERHEAD 304 + 20
+# extract just one copy of the transmitted signal
+# Discard transmitter convolution overhead, was 200 on both ends but we downsampled everything by 10
+rx_symbols = rx_symbols[max_correlation[0] + 20: max_correlation[0] + 20 + 5000 + 300 + 2178]
+
+if True:
+
+    # perform coarse CFO estimation
+    # extract the STFs and split them into 2 slightly offset combinations
+    x = rx_symbols[19 * 0:(19 * 15)]
+    y = rx_symbols[19 * 1:(19 * 16)]
+    coarse_cfo_phase = np.angle(np.sum(np.conj(x) * y))
+    coarse_cfo = coarse_cfo_phase / (2 * np.pi * 19)
+    print("Coarse_CFO: " + str(coarse_cfo))
+    print("Maximum Unambiguous Coarse CFO: " + str(1/(2 * 19)))
+    # adjust symbols by coarse CFO before estimating fine CFO
+    n = (np.arange(max_correlation[0] + offset, max_correlation[0] + offset + len(rx_symbols)) + 20) * 10
+    correction = np.exp(1j * 2 * np.pi * coarse_cfo * n)
+    rx_symbols = rx_symbols * correction
+
+    # extract the LTFs
+    x = rx_symbols[(19 * 16):(19 * 16) + 937]
+    y = rx_symbols[(19 * 16) + 937:(19 * 16) + 1874]
+    fine_cfo_phase = np.angle(np.sum(np.conj(x) * y))
+    fine_cfo = fine_cfo_phase / (2 * np.pi * 937)
+    print("Fine_CFO: " + str(fine_cfo))
+    print("Maximum Unambiguous Fine CFO: " + str(1/(2 * 937)))
+    # finally adjust by fine CFO
+    correction = np.exp(1j * 2 * np.pi * fine_cfo * n)
+    rx_symbols = rx_symbols * correction
 
 # extract pilots
 # 16 * 19 = 304
 # 304 + 1874 = 2178
-rx_pilot = symbols[2178: 2178 + 300]
+rx_pilot = rx_symbols[2178:2178 + 300]
 pilots = np.load("pilots.npy")
 tx_symbols = np.load("tx_symbols.npy")
 constellation = np.load("constellation.npy")
@@ -194,11 +206,14 @@ Y[0:, 0] = rx_pilot[: N]
 
 h_hat, _, _, _ = np.linalg.lstsq(X, Y, rcond=None)
 
+# cut off the metadata
+rx_symbols = rx_symbols[2178 + 300:2178 + 300 + 5000]
+
 # equalize
-equalized = symbols / h_hat
+equalized = rx_symbols / h_hat
 
 # get SER
-ser = symbol_error_rate(equalized, tx_symbols, constellation)
+ser = symbol_error_rate(equalized[0], tx_symbols, constellation)
 
 # plot the complex plane with the constellation
 fig, ax = plt.subplots(figsize=(8, 8))
@@ -207,8 +222,7 @@ ax.scatter(equalized.real, equalized.imag,
         color='steelblue', alpha=0.4, s=15, label='Received symbols')
 
 # Ideal constellation points
-symbols = np.load("symbols.npy")
-ax.scatter(symbols.real, symbols.imag,
+ax.scatter(pilots.real, pilots.imag,
         color='red', alpha=0.4, s=15, label='Transmitted Symbols')
 
 # Axes through origin
@@ -224,15 +238,3 @@ ax.grid(True, alpha=0.3)
 
 plt.tight_layout()
 plt.show()
-
-if False:
-    x_axis = np.arange(0, len(downsampled) - 1874 + 1)
-    plt.figure(num="lab4_3")
-    plt.plot(x_axis, corr_magn_arr, label="|Correlation|")
-    plt.plot(max_correlation[0], max_correlation[1], 'ro', label="Peak")
-    plt.xlabel("Sliding Window Timing Offset")
-    plt.ylabel("Correlation Magnitdue")
-    plt.title('Frame Synchronization')
-    plt.grid(True)
-    plt.legend()
-    plt.show()
