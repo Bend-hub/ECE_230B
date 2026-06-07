@@ -30,9 +30,9 @@ tx_cyclic_buffer = True         # cyclic nature of transmitter's buffer (True ->
 # ---------------------------------------------------------------
 # Initialize Pluto object using issued token.
 # ---------------------------------------------------------------
-sdr_tx = adi.Pluto(token='B40WX1J836Y') # create Pluto object
+sdr_tx = adi.Pluto(token='EV20AHAPWyk') # create Pluto object
 
-sdr_rx = adi.Pluto(token='7kRA8o3LOFo')
+sdr_rx = adi.Pluto(token='_e0ODVZm-9U')
 
 sdr_tx.sample_rate = int(sample_rate)   # set baseband sampling rate of Pluto
 sdr_rx.sample_rate = int(sample_rate)
@@ -170,23 +170,23 @@ if True:
     x = rx_symbols[19 * 0:(19 * 15)]
     y = rx_symbols[19 * 1:(19 * 16)]
     coarse_cfo_phase = np.angle(np.sum(np.conj(x) * y))
-    coarse_cfo = coarse_cfo_phase / (2 * np.pi * 19)
+    coarse_cfo = coarse_cfo_phase / (2 * np.pi * 19 * sps)
     print("Coarse_CFO: " + str(coarse_cfo))
-    print("Maximum Unambiguous Coarse CFO: " + str(1/(2 * 19)))
+    print("Maximum Unambiguous Coarse CFO: " + str(1/(2 * 19 * sps)))
     # adjust symbols by coarse CFO before estimating fine CFO
     n = (np.arange(max_correlation[0] + offset, max_correlation[0] + offset + len(rx_symbols)) + 20) * 10
-    correction = np.exp(1j * 2 * np.pi * coarse_cfo * n)
+    correction = np.exp(-1j * 2 * np.pi * coarse_cfo * n)
     rx_symbols = rx_symbols * correction
 
     # extract the LTFs
     x = rx_symbols[(19 * 16):(19 * 16) + 937]
     y = rx_symbols[(19 * 16) + 937:(19 * 16) + 1874]
     fine_cfo_phase = np.angle(np.sum(np.conj(x) * y))
-    fine_cfo = fine_cfo_phase / (2 * np.pi * 937)
+    fine_cfo = fine_cfo_phase / (2 * np.pi * 937 * sps)
     print("Fine_CFO: " + str(fine_cfo))
-    print("Maximum Unambiguous Fine CFO: " + str(1/(2 * 937)))
+    print("Maximum Unambiguous Fine CFO: " + str(1/(2 * 937 * sps)))
     # finally adjust by fine CFO
-    correction = np.exp(1j * 2 * np.pi * fine_cfo * n)
+    correction = np.exp(-1j * 2 * np.pi * fine_cfo * n)
     rx_symbols = rx_symbols * correction
 
 # extract pilots

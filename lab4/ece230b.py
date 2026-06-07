@@ -146,11 +146,8 @@ def symbol_error_rate(received_symbols, transmitted_symbols, constellation):
     return ser
 
 def get_sinc_pulse(beta, span, sps):
-    T = 1/(10**5) # symbol period
     n = np.arange(-span * sps, span * sps + 1)
-    t = n * T / sps
-    frequency = (1 + beta)/(2 * T)
-    h = np.sinc(frequency * t) * frequency
+    h = np.sinc(n / 8) / 8
     h *= np.hamming((2 * span * sps) + 1) # reduce the ripples to make it look more like a rectangle
     h /= np.sum(h)  # normalize so DC gain = 1
     return h
@@ -223,4 +220,5 @@ def zadoff_chu_sequence(N,q):
     n = np.arange(N)
 
     return np.exp(-1j * np.pi * q * ((n ** 2) + n) / N)
+    
 
